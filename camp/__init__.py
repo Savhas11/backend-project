@@ -2,6 +2,7 @@ from flask import Flask
 from .main import main_bp
 from .extensions import db, migrate
 from .config import config_options
+from . import models
 
 
 def create_app(config_name="development"):
