@@ -27,6 +27,8 @@ def login():
         )
     }
 
+    print("JWT expiration:", payload["exp"])
+
     secret = current_app.config["JWT_SECRET_KEY"]
     algorithm = "HS256"
     token = jwt.encode(payload, secret, algorithm=algorithm)

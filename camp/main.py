@@ -1,5 +1,8 @@
 from flask import Blueprint, request, jsonify, g, current_app
+from .models import User
 import jwt
+from camp.models import User
+from camp.extensions import db
 
 main_bp = Blueprint("main", __name__)
 
@@ -25,8 +28,11 @@ def authenticate_request():
 
         g.user_id = int(payload["sub"])
 
+    except jwt.ExpiredSignatureError:
+        return jsonify({"error": "Token has expired"}), 401
+
     except (jwt.InvalidTokenError, KeyError, ValueError, TypeError):
-        return jsonify({"error": "Invalid or expired token"}), 401
+        return jsonify({"error": "Invalid token"}), 401
 
 
 @main_bp.route("/health")
@@ -53,3 +59,34 @@ def get_trails():
 
     
 
+@main_bp.route("/profile", methods=["GET"])
+def get_profile():
+    user = User.query.get(g.user_id)
+
+    if user is None:
+        return jsonify({"error": "User not found"}), 404
+    
+    return jsonify({
+        "id": user.id,
+        "email": user.email,
+        "created_at": user.created_at.isoformat()
+    }), 200
+
+
+
+@main_bp.route("/profile", methods=["PATCH"])
+def patch_profile():
+    user = User.query.get(g.user_id)
+
+    data = request.get_json() or {}
+
+    if "email" in data:
+        user.email = data["email"]
+
+    db.session.commit()
+
+    return jsonify({
+        "id": user.id,
+        "email": user.email,
+        "created_at": user.created_at.isoformat()
+    }), 200

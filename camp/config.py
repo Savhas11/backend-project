@@ -9,6 +9,9 @@ class BaseConfig:
     if not SECRET_KEY:
         raise RuntimeError("SECRET_KEY environment variable is required")
 
+    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", SECRET_KEY)
+    JWT_LIFETIME_SECONDS = int(os.environ.get("JWT_LIFETIME_SECONDS", "360"))
+
 class DevelopmentConfig(BaseConfig):
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = os.environ.get(
