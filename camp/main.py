@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, g, current_app
 from .models import User
 import jwt
-from camp.models import User
+from camp.models import User, Trail
 from camp.extensions import db
 
 main_bp = Blueprint("main", __name__)
@@ -40,24 +40,6 @@ def health():
     return {"status": "ok"}, 200
 
 
-@main_bp.route("/trails", methods=["GET"])
-def get_trails():
-    return jsonify([
-        {
-            "id": 1,
-            "name": "Raven Run",
-            "location": "Lexington, KY",
-            "difficulty": "Moderate"
-        },
-        {
-            "id": 2,
-            "name": "Natural Bridge",
-            "location": "Slade, KY",
-            "difficulty": "Easy"
-        }
-    ])
-
-    
 
 @main_bp.route("/profile", methods=["GET"])
 def get_profile():
@@ -89,4 +71,87 @@ def patch_profile():
         "id": user.id,
         "email": user.email,
         "created_at": user.created_at.isoformat()
+    }), 200
+
+@main_bp.route("/admin/trails_test", methods=["GET"])
+def trails_test():
+    user = User.query.get(g.user_id)
+
+    if user is None:
+        return jsonify({"error": "User not found"}), 404
+
+    if user.role != "admin":
+        return jsonify({"error": "Admin access required"}), 403
+
+    return jsonify({"message": "Admin only area"}), 200
+
+    
+    
+@main_bp.route("/trails", methods=["POST"])
+def create_trail():
+
+    
+    data = request.get_json()
+
+    if "name" not in data or "distance_miles" not in data or not isinstance(data["distance_miles"], (int, float)):
+        return {"error": "Missing or invalid required fields"}, 400
+
+   
+    trail = Trail(
+        name=data["name"],
+        distance_miles=data["distance_miles"],
+        difficulty=data.get("difficulty"),
+        description=data.get("description"),
+        user_id=g.user_id
+    )
+
+    db.session.add(trail)
+    db.session.commit()
+
+ 
+    return jsonify({
+        "id": trail.id,
+        "name": trail.name,
+        "distance_miles": trail.distance_miles,
+        "difficulty": trail.difficulty,
+        "description": trail.description,
+        "user_id": trail.user_id
+    }), 201
+
+@main_bp.route("/trails", methods=["GET"])
+def get_trails():
+
+    trails = Trail.query.filter(Trail.user_id == g.user_id).all()
+
+  
+    trail_list = [
+        {
+            "id": trail.id,
+            "name": trail.name,
+            "distance_miles": trail.distance_miles,
+            "difficulty": trail.difficulty,
+            "description": trail.description
+        }
+        for trail in trails
+    ]
+
+    return jsonify(trail_list), 200
+
+@main_bp.route("/trails/<int:trail_id>", methods=["GET"])
+def get_trails_by_id(trail_id):
+
+    trail = Trail.query.filter(
+        Trail.id == trail_id,
+        Trail.user_id == g.user_id
+    ).first()
+
+    if trail is None:
+        return jsonify({"error": "trail not found"}), 404
+
+    return jsonify({
+        "id": trail.id,
+        "name": trail.name,
+        "distance_miles": trail.distance_miles,
+        "difficulty": trail.difficulty,
+        "description": trail.description
     }), 200
