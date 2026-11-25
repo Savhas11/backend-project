@@ -155,3 +155,61 @@ def get_trails_by_id(trail_id):
         "difficulty": trail.difficulty,
         "description": trail.description
     }), 200
+
+@main_bp.route("/trails/<int:trail_id>", methods=["PATCH"])
+def update_trail_by_id(trail_id):
+    trail = Trail.query.filter(Trail.id == trail_id).first()
+
+    
+    if trail is None:
+        return jsonify({"error": "trail not found"}), 404
+
+  
+    data = request.get_json()
+
+    if "distance_miles" in data:
+        if (
+            not isinstance(data["distance_miles"], (int, float))
+            or isinstance(data["distance_miles"], bool)
+            or data["distance_miles"] <= 0
+        ):
+            return jsonify({"error": "invalid distance_miles"}), 400
+
+    
+    if "name" in data:
+        trail.name = data["name"]
+
+    if "distance_miles" in data:
+        trail.distance_miles = data["distance_miles"]
+
+    if "difficulty" in data:
+        trail.difficulty = data["difficulty"]
+
+    if "description" in data:
+        trail.description = data["description"]
+
+
+    db.session.commit()
+
+    return jsonify({
+        "id": trail.id,
+        "name": trail.name,
+        "distance_miles": trail.distance_miles,
+        "difficulty": trail.difficulty,
+        "description": trail.description
+    }), 200
+
+
+@main_bp.route("/trails/<int:trail_id>", methods=["DELETE"])
+def delete_trail_by_id(trail_id):
+
+    trail = Trail.query.filter(Trail.id == trail_id).first()
+
+    
+    if trail is None:
+        return jsonify({"error": "trail not found"}), 404
+    
+    db.session.delete(trail)
+    db.session.commit()
+
+    return "", 204
