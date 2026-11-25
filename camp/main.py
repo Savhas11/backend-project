@@ -93,8 +93,15 @@ def create_trail():
     
     data = request.get_json()
 
-    if "name" not in data or "distance_miles" not in data or not isinstance(data["distance_miles"], (int, float)):
-        return {"error": "Missing or invalid required fields"}, 400
+    if "name" not in data or "distance_miles" not in data:
+        return jsonify({"error": "Missing required fields"}), 400
+
+    if (
+    not isinstance(data["distance_miles"], (int, float))
+    or isinstance(data["distance_miles"], bool)
+    or data["distance_miles"] <= 0
+):
+        return jsonify({"error": "distance_miles must be a positive number"}), 400
 
    
     trail = Trail(
@@ -156,9 +163,15 @@ def get_trails_by_id(trail_id):
         "description": trail.description
     }), 200
 
+def get_owned_trail(trail_id):
+    return Trail.query.filter(
+        Trail.id == trail_id,
+        Trail.user_id == g.user_id
+    ).first()
+
 @main_bp.route("/trails/<int:trail_id>", methods=["PATCH"])
 def update_trail_by_id(trail_id):
-    trail = Trail.query.filter(Trail.id == trail_id).first()
+    trail = get_owned_trail(trail_id)
 
     
     if trail is None:
@@ -203,7 +216,7 @@ def update_trail_by_id(trail_id):
 @main_bp.route("/trails/<int:trail_id>", methods=["DELETE"])
 def delete_trail_by_id(trail_id):
 
-    trail = Trail.query.filter(Trail.id == trail_id).first()
+    trail = get_owned_trail(trail_id)
 
     
     if trail is None:
@@ -213,3 +226,4 @@ def delete_trail_by_id(trail_id):
     db.session.commit()
 
     return "", 204
+
