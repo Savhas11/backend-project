@@ -3,6 +3,7 @@ from .models import User
 import jwt
 from camp.models import User, Trail
 from camp.extensions import db
+import math
 
 main_bp = Blueprint("main", __name__)
 
@@ -127,10 +128,34 @@ def create_trail():
 
 @main_bp.route("/trails", methods=["GET"])
 def get_trails():
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 10, type=int)
 
-    trails = Trail.query.filter(Trail.user_id == g.user_id).all()
+    # Validate page
+    if page is None or page < 1:
+        return jsonify({"error": "invalid page"}), 400
 
-  
+    # Validate per_page
+    if per_page is None or per_page < 1 or per_page > 50:
+        return jsonify({"error": "invalid per_page"}), 400
+
+    
+    total = Trail.query.filter(
+        Trail.user_id == g.user_id
+    ).count()
+
+    
+    pages = math.ceil(total / per_page) if total > 0 else 0
+
+    
+    trails = Trail.query.filter(
+        Trail.user_id == g.user_id
+    ).order_by(Trail.id).paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+
     trail_list = [
         {
             "id": trail.id,
@@ -139,10 +164,16 @@ def get_trails():
             "difficulty": trail.difficulty,
             "description": trail.description
         }
-        for trail in trails
+        for trail in trails.items
     ]
 
-    return jsonify(trail_list), 200
+    return jsonify({
+        "page": page,
+        "per_page": per_page,
+        "total": total,
+        "pages": pages,
+        "items": trail_list
+    }), 200
 
 @main_bp.route("/trails/<int:trail_id>", methods=["GET"])
 def get_trails_by_id(trail_id):
