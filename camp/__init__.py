@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from .main import main_bp
 from .auth import auth_bp
 from .extensions import db, migrate

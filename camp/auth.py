@@ -1,11 +1,40 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timezone, timedelta
 from camp.extensions import db
 from camp.models import User
 import jwt
 
+
 auth_bp = Blueprint("auth", __name__)
+
+
+def authenticate_request():
+
+    if request.endpoint in ["main.health", "auth.register", "auth.login"]:
+        return None
+
+    auth_header = request.headers.get("Authorization")
+
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Authorization header missing or invalid"}), 401
+
+    token = auth_header.split(" ", 1)[1]
+
+    try:
+        payload = jwt.decode(
+            token,
+            current_app.config["JWT_SECRET_KEY"],
+            algorithms=["HS256"]
+        )
+
+        g.user_id = int(payload["sub"])
+
+    except jwt.ExpiredSignatureError:
+        return jsonify({"error": "Token has expired"}), 401
+
+    except (jwt.InvalidTokenError, KeyError, ValueError, TypeError):
+        return jsonify({"error": "Invalid token"}), 401
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
